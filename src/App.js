@@ -1,25 +1,22 @@
-import logo from "./logo.svg";
-import "./App.css";
+import { Component } from "react";
+import { ToastContainer } from "react-toastify";
+import ImageInfo from "./components/ImageInfo/ImageInfo";
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+export default class App extends Component {
+  state = {
+    imageName: "",
+  };
+
+  handleFormSubmit = (imageName) => {
+    this.setState({ imageName });
+  };
+
+  render() {
+    return (
+      <>
+        <ImageInfo imageName={this.state.imageName} />
+        <ToastContainer autoClose={2000} />
+      </>
+    );
+  }
 }
-
-export default App;

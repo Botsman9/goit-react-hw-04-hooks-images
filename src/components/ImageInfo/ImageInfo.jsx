@@ -1,154 +1,101 @@
-import React, { Component } from "react";
-import fetchImage from "../services/image-api.jsx";
-import ImagesErrorView from "../ImageErrorView/ImageErrorView";
-import ImageLoader from "../Loader/Loader";
-import ImageGallery from "../ImageGallery/ImageGallery";
-import Modal from "../Modal/Modal";
-import Button from "../Button/Button";
-import Searchbar from "../Searchbar/Searchbar";
+import React, { useState, useEffect } from 'react';
+import fetchImage from '../services/image-api.jsx';
+import ImageErrorView from '../ImageErrorView/ImageErrorView';
+import ImageLoader from '../Loader/Loader';
+import ImageGallery from '../ImageGallery/ImageGallery';
+import Modal from '../Modal/Modal';
+import Button from '../Button/Button';
+import Searchbar from '../Searchbar/Searchbar';
 
-class ImageInfo extends Component {
-  state = {
-    images: [],
-    totalHits: 0,
-    searchQuery: "",
-    page: 1,
-    isLoading: false,
-    error: null,
-    notify: false,
-    message: "",
-    showModal: false,
-    activeButton: false,
+const App = () => {
+  const [images, setImages] = useState([]);
+  const [imageName, setImageName] = useState('');
+  const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState({ status: false, message: '' });
+  const [showModal, setShowModal] = useState({
+    status: false,
     targetImage: null,
-  };
+  });
+  const [activeButton, setActiveButton] = useState(false);
 
-  componentDidMount() {
-    this.searchImages();
+  useEffect(() => {
+    setPage(1);
+    searchImages(imageName, 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageName]);
+
+  function searchImages(searchQuery, page) {
+    if (searchQuery === '') {
+      setImages([]);
+      setActiveButton(false);
+      setError({ status: true, message: 'Please input search request' });
+      return;
+    }
+
+    setIsLoading(true);
+    setError({ status: false, message: '' });
+
+    fetchImage(searchQuery, page)
+      .then(data => {
+        if (page === 1) {
+          setImages(data.hits);
+        } else {
+          setImages(prevState => [...prevState, ...data.hits]);
+          window.scrollTo({
+            top: document.documentElement.scrollHeight,
+            behavior: 'smooth',
+          });
+        }
+
+        checkButtonAndNotify(data.totalHits, images.length + data.hits.length);
+        setPage(prevState => prevState + 1);
+      })
+      .catch(error =>
+        setError({
+          status: true,
+          message: `Something wrong: ${error.message}`,
+        }),
+      )
+      .finally(() => setIsLoading(false));
   }
 
-  componentDidUpdate(prevProps, prevState) {
-    const { searchQuery, page } = this.state;
+  function checkButtonAndNotify(total, current) {
+    setActiveButton(total > current ? true : false);
 
-    if (prevState.searchQuery !== searchQuery) {
-      this.searchImages(searchQuery, 1);
-      this.setState({ page: 1 });
-    }
-    if (prevState.page !== page) {
-      this.searchImages(searchQuery, page);
-    }
-  }
-  searchImages(searchQuery = "", page = 1) {
-    if (searchQuery !== "") {
-      this.setState({
-        isLoading: true,
-        notify: false,
-      });
-
-      fetchImage(searchQuery, page)
-        .then((newImage) => {
-          if (page === 1) {
-            this.setState({
-              totalHits: newImage.totalHits,
-              images: newImage.hits,
-            });
-          } else {
-            this.setState((prevState) => ({
-              images: [...prevState.images, ...newImage.hits],
-            }));
-            window.scrollTo({
-              top: document.documentElement.scrollHeight,
-              behavior: "smooth",
-            });
-          }
-          this.checkLoadMore();
-        })
-        .catch((error) => this.setState({ error }))
-        .finally(() => this.setState({ isLoading: false }));
-    } else {
-      this.setState({
-        images: [],
-        activeButton: false,
-        message: "Please input search request",
-        notify: true,
-      });
-    }
-  }
-
-  onSubmit = (value) => {
-    this.setState({ searchQuery: value });
-  };
-
-  onClickLoadMore = () => {
-    this.setState((prevState) => ({
-      page: prevState.page + 1,
-    }));
-  };
-
-  checkLoadMore = () => {
-    const { totalHits, images } = this.state;
-
-    if (totalHits > images.length) {
-      this.setState({ activeButton: true });
-    } else {
-      this.setState({ activeButton: false });
-    }
-
-    if (!totalHits) {
-      this.setState({
-        message: "Nothing was found. Try again.",
-        notify: true,
-      });
-    } else {
-      this.setState({ notify: false });
-    }
-  };
-
-  toggleModal = ({ status, src, alt }) => {
-    if (status) {
-      this.setState({
-        targetImage: { src, alt },
-        showModal: true,
-      });
-    } else {
-      this.setState({
-        targetImage: null,
-        showModal: false,
-      });
-    }
-  };
-
-  render() {
-    const {
-      images,
-      isLoading,
-      error,
-      notify,
-      message,
-      showModal,
-      targetImage,
-      activeButton,
-    } = this.state;
-
-    return (
-      <>
-        <Searchbar onSubmit={this.onSubmit} />
-        {error && <ImagesErrorView message={error.message} />}
-        {isLoading && <ImageLoader />}
-        {images.length > 0 && (
-          <ImageGallery images={images} toggleModal={this.toggleModal} />
-        )}
-        {notify && <ImagesErrorView message={message} />}
-        {showModal && (
-          <Modal
-            src={targetImage.src}
-            alt={targetImage.alt}
-            toggleModal={this.toggleModal}
-          />
-        )}
-        {activeButton && <Button onClick={this.onClickLoadMore} />}
-      </>
+    setError(
+      !total
+        ? { status: true, message: 'Nothing was found. Try again.' }
+        : { status: false, message: '' },
     );
   }
-}
 
-export default ImageInfo;
+  const toggleModal = ({ status, src, alt }) => {
+    setShowModal(
+      status
+        ? { status: true, targetImage: { src, alt } }
+        : { status: false, targetImage: null },
+    );
+  };
+
+  return (
+    <div>
+      <Searchbar onSubmit={setImageName} />
+      {error.status && <ImageErrorView message={error.message} />}
+      {isLoading && <ImageLoader />}
+      {images.length > 0 && (
+        <ImageGallery images={images} toggleModal={toggleModal} />
+      )}
+      {showModal.status && (
+        <Modal
+          src={showModal.targetImage.src}
+          alt={showModal.targetImage.alt}
+          toggleModal={toggleModal}
+        />
+      )}
+      {activeButton && <Button onClick={() => searchImages(imageName, page)} />}
+    </div>
+  );
+};
+
+export default App;

@@ -1,4 +1,5 @@
-import React from "react";
+import React from 'react';
+import PropTypes from 'prop-types';
 
 const ImageGalleryItem = ({ image, toggleModal }) => {
   const onClick = () => {
@@ -19,6 +20,11 @@ const ImageGalleryItem = ({ image, toggleModal }) => {
       />
     </li>
   );
+};
+
+ImageGalleryItem.propTypes = {
+  image: PropTypes.object.isRequired,
+  toggleModal: PropTypes.func.isRequired,
 };
 
 export default ImageGalleryItem;
